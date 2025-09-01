@@ -1,0 +1,253 @@
+// src/script/parser.ts
+import yaml from "js-yaml";
+import type {
+  Script,
+  StoryBlock,
+  Line,
+  LineObject,
+  ChoiceItem,
+  Character,
+} from "../types";
+
+/** "/a/b/c.yaml" -> "/a/b/" */
+function dirname(url: string): string {
+  const u = new URL(url, location.origin);
+  const parts = u.pathname.split("/");
+  if (parts.at(-1)?.includes(".")) parts.pop();
+  return parts.join("/") + "/";
+}
+
+/** ---- type guards / asserts ---- */
+function isPlainObject(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+function isString(v: unknown): v is string { return typeof v === "string"; }
+function isStringArray(v: unknown): v is string[] {
+  return Array.isArray(v) && v.every((x) => typeof x === "string");
+}
+function isScalar(v: unknown): v is boolean | number | string {
+  return typeof v === "boolean" || typeof v === "number" || typeof v === "string";
+}
+export function isLineObject(x: Line): x is LineObject {
+  return typeof x === "object" && x !== null && !Array.isArray(x);
+}
+function fail(path: string, msg: string): never {
+  throw new Error(`${path}: ${msg}`);
+}
+function assert(cond: unknown, path: string, msg: string): asserts cond {
+  if (!cond) fail(path, msg);
+}
+
+/** ---- validate characters ---- */
+function validateCharacters(root: Record<string, unknown>): Record<string, Character> | undefined {
+  const src = root["characters"];
+  if (src == null) return undefined;
+  assert(isPlainObject(src), "characters", "must be an object map");
+
+  const out: Record<string, Character> = {};
+  for (const [key, val] of Object.entries(src)) {
+    assert(isPlainObject(val), `characters.${key}`, "must be an object");
+    const name = val["name"];
+    assert(isString(name) && name.trim().length > 0, `characters.${key}.name`, "required string");
+    const color = val["color"];
+    if (color != null) assert(isString(color), `characters.${key}.color`, "must be string");
+    const chara = val["chara"];
+    if (chara != null) assert(isString(chara), `characters.${key}.chara`, "must be string");
+
+    out[key] = {
+      name,
+      color: color as string | undefined,
+      chara: chara as string | undefined,
+    };
+  }
+  return out;
+}
+
+/** ---- validate choice item ---- */
+function validateChoiceItem(v: unknown, path: string): ChoiceItem {
+  assert(isPlainObject(v), path, "must be an object");
+  const text = v["text"];
+  const goto = v["goto"];
+  assert(isString(text) && text.trim(), `${path}.text`, "required string");
+  assert(isString(goto) && goto.trim(), `${path}.goto`, "required string");
+
+  const item: ChoiceItem = { text, goto };
+
+  const setV = v["set"];
+  if (setV != null) {
+    assert(isPlainObject(setV), `${path}.set`, "must be an object of scalars");
+    const setObj: Record<string, boolean | number | string> = {};
+    for (const [k, val] of Object.entries(setV)) {
+      assert(isScalar(val), `${path}.set.${k}`, "must be boolean/number/string");
+      setObj[k] = val;
+    }
+    item.set = setObj;
+  }
+
+  const req = v["require"];
+  if (req != null) {
+    assert(isString(req) || isStringArray(req), `${path}.require`, "string or string[]");
+    item.require = req as string | string[];
+  }
+  const reqN = v["requireNot"];
+  if (reqN != null) {
+    assert(isString(reqN) || isStringArray(reqN), `${path}.requireNot`, "string or string[]");
+    item.requireNot = reqN as string | string[];
+  }
+
+  return item;
+}
+
+/** ---- validate one line object & collect labels ---- */
+function validateLineObject(
+  obj: Record<string, unknown>,
+  path: string,
+  labels: Set<string>
+): LineObject {
+  // 許可キー: bg, chara, narrator, sfx, bgm, wait, label, goto, choice
+  // それ以外は「スピーカー名」として扱い、値は string 必須
+  const out: Record<string, unknown> = {};
+
+  for (const [k, v] of Object.entries(obj)) {
+    switch (k) {
+      case "bg":
+      case "sfx":
+      case "wait":
+      case "narrator":
+      case "goto":
+        if (v != null) assert(isString(v), `${path}.${k}`, "must be string");
+        out[k] = v;
+        break;
+      case "bgm":
+        if (v != null) {
+          assert(isString(v), `${path}.bgm`, 'must be string (file path) or "stop"');
+        }
+        out[k] = v;
+        break;
+      case "chara":
+        if (v === null || v === undefined) {
+          out[k] = null;
+        } else {
+          assert(isString(v), `${path}.chara`, "must be string (path) or null");
+          out[k] = v;
+        }
+        break;
+      case "label":
+        assert(isString(v) && v.trim(), `${path}.label`, "non-empty string required");
+        labels.add(v.trim());
+        out[k] = v;
+        break;
+      case "choice":
+        assert(Array.isArray(v), `${path}.choice`, "must be an array");
+        out[k] = v.map((it, i) => validateChoiceItem(it, `${path}.choice[${i}]`));
+        break;
+      default:
+        // speaker line
+        assert(isString(v), `${path}.${k}`, "speaker line value must be string");
+        out[k] = v;
+    }
+  }
+
+  return out as LineObject;
+}
+
+/** ---- validate story blocks & link goto/labels ---- */
+type LabelMap = Map<string, Set<string>>;
+
+function validateAndLinkStory(raw: unknown, basePath: string): { story: StoryBlock[]; labels: LabelMap } {
+  assert(Array.isArray(raw), basePath, "must be an array of blocks");
+
+  const story: StoryBlock[] = [];
+  const names = new Set<string>();
+  const labelMap: LabelMap = new Map();
+
+  // 1st pass: validate blocks & collect labels
+  raw.forEach((b, i) => {
+    const p = `${basePath}[${i}]`;
+    assert(isPlainObject(b), p, "must be an object");
+    const nameRaw = b["name"];
+    const name = isString(nameRaw) && nameRaw.trim() ? nameRaw.trim() : `block${i}`;
+    assert(!names.has(name), `${p}.name`, `duplicate block name "${name}"`);
+    names.add(name);
+
+    const linesRaw = b["lines"];
+    assert(Array.isArray(linesRaw), `${p}.lines`, "must be an array");
+
+    const labels = new Set<string>();
+    const lines: Line[] = (linesRaw as unknown[]).map((ln, j) => {
+      const lp = `${p}.lines[${j}]`;
+      if (isString(ln)) return ln;
+      assert(isPlainObject(ln), lp, "must be a string or object");
+      return validateLineObject(ln, lp, labels);
+    });
+
+    labelMap.set(name, labels);
+    story.push({ name, lines });
+  });
+
+  // 2nd pass: verify goto targets (block / block#label / label-in-current)
+  const hasBlock = (n: string) => names.has(n);
+  const hasLabel = (block: string, lab: string) => labelMap.get(block)?.has(lab) ?? false;
+
+  story.forEach((block) => {
+    block.lines.forEach((ln, j) => {
+      if (!isLineObject(ln)) return;
+      const p = `${basePath}.${block.name}.lines[${j}]`;
+
+      const checkGoto = (val: string, hereBlock: string, path: string) => {
+        const s = val.trim();
+        const h = s.indexOf("#");
+        if (h >= 0) {
+          const b = s.slice(0, h).trim();
+          const lab = s.slice(h + 1).trim();
+          assert(b.length > 0, path, "block name before # must be non-empty");
+          assert(hasBlock(b), path, `unknown block "${b}"`);
+          if (lab) assert(hasLabel(b, lab), path, `unknown label "${lab}" in block "${b}"`);
+        } else {
+          if (hasBlock(s)) return; // block先頭
+          assert(hasLabel(hereBlock, s), path, `unknown label "${s}" in current block "${hereBlock}"`);
+        }
+      };
+
+      if (ln.goto && isString(ln.goto)) {
+        checkGoto(ln.goto, block.name, `${p}.goto`);
+      }
+      if (Array.isArray(ln.choice)) {
+        ln.choice.forEach((c, idx) => checkGoto(c.goto, block.name, `${p}.choice[${idx}].goto`));
+      }
+    });
+  });
+
+  return { story, labels: labelMap };
+}
+
+/** ---- main loader ---- */
+export async function loadScript(url: string): Promise<Script> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Failed to load script: ${url}`);
+  const text = await res.text();
+
+  // js-yaml の戻りは any だが、ここで unknown 型へ束縛してから絞り込む
+  const rootUnknown: unknown = yaml.load(text);
+  assert(isPlainObject(rootUnknown), "root", "YAML root must be an object");
+  const root = rootUnknown as Record<string, unknown>;
+
+  if (root["id"] != null) assert(isString(root["id"]), "id", "must be string");
+  if (root["title"] != null) assert(isString(root["title"]), "title", "must be string");
+
+  const characters = validateCharacters(root);
+
+  const storyRaw = root["story"];
+  const { story } = validateAndLinkStory(storyRaw, "story");
+
+  const baseDir = dirname(url);
+
+  const script: Script = {
+    id: String((root["id"] as string | undefined) ?? "story"),
+    title: root["title"] as string | undefined,
+    characters,
+    story,
+    baseDir,
+  };
+  return script;
+}

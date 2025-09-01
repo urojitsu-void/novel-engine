@@ -1,0 +1,58 @@
+{
+  "name": "vn-yaml-lsp",
+  "repository": "vn-yaml-lsp",
+  "license": "MIT",
+  "private": true,
+  "version": "0.0.1",
+  "displayName": "VN YAML LSP",
+  "publisher": "local",
+  "description": "Validate VN YAML scripts (characters reference checks, basic schema-like checks).",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onLanguage:yaml",
+    "workspaceContains:**/*.vn.yaml",
+    "workspaceContains:**/*.vn.yml"
+  ],
+  "contributes": {
+    "configuration": {
+      "title": "VN YAML LSP",
+      "properties": {
+        "vnYamlLsp.enable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable VN YAML LSP diagnostics for *.vn.yaml files."
+        }
+      }
+    }
+  },
+  "files": [
+    "dist/**",
+    "server/dist/**",
+    "package.json",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "compile": "tsc -b",
+    "watch": "tsc -b -w",
+    "bundle": "node scripts/bundle.mjs",
+    "package": "vsce package --no-dependencies",
+    "vscode:prepublish": "pnpm bundle"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1",
+    "yaml": "^2.4.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.4.0",
+    "vsce": "^2.15.0"
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "yaml.schemas": {
+    "./story.schema.json": "**/*.vn.yaml"
+  }
+}

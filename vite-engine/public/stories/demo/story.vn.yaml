@@ -1,0 +1,64 @@
+id: short-story
+title: 港町の夜
+
+characters:
+  Akito: { name: "暁翔", color: "#4af", chara: ./akito.png }
+  Yuina: { name: "結菜", color: "#f8c", chara: ./yuina.png }
+
+story:
+  - name: main
+    lines:
+      - bgm: ./bgm.mp3
+      - bg: ./bg_port.png
+      - narrator: "港町の夜。波の音が静かに耳をくすぐる。"
+      - choice:
+          - text: "困っている結菜を助ける"
+            goto: port
+            set: { kindness: 1 }
+          - text: "様子を見るだけにする"
+            goto: port
+            set: { kindness: 0 }
+
+  - name: port
+    lines:
+      - Akito: "よお、遅かったな。"
+      - narrator: "どう声をかける？"
+      - choice:
+          - text: "正直に助けたことを伝える"
+            goto: niceTalk
+            require: kindness # kindness=1 のときだけ表示
+          - text: "話題を逸らす"
+            goto: smallTalk
+          - text: "からかってみる"
+            goto: tease
+            requireNot: kindness # kindness=0 のときだけ表示
+
+  - name: niceTalk
+    lines:
+      - Yuina: "…ありがとう。さっき助けてくれて、本当に心強かった。"
+      - narrator: "ふたりの間に、柔らかな空気が流れた。"
+      - goto: lighthouse
+
+  - name: smallTalk
+    lines:
+      - Akito: "まあ…とりあえず灯台の方へ行くか。"
+      - Yuina: "うん、賛成。"
+      - goto: lighthouse
+
+  - name: tease
+    lines:
+      - Akito: "迷子の子猫ちゃん、送ってあげようか？"
+      - Yuina: "…からかわないで。行こ。"
+      - goto: lighthouse
+
+  - name: lighthouse
+    lines:
+      - bg: ./bg_lighthouse.png
+      - Yuina: "灯台の光って、不思議と心が落ち着くね。"
+      - goto: end
+
+  - name: end
+    lines:
+      - bgm: stop
+      - sfx: ./sfx.mp3
+      - narrator: "[END]"
