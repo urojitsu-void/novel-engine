@@ -94,6 +94,25 @@
       color: white;
       display: none;
     }
+
+    #autoplay-indicator {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      background-color: rgba(0, 0, 0, 0.5);
+      color: white;
+      padding: 5px 10px;
+      border-radius: 5px;
+      font-family: sans-serif;
+      font-size: 14px;
+      z-index: 100;
+      /* 初期状態では非表示 */
+      display: none;
+    }
+
+    body.autoplay #autoplay-indicator {
+      display: block;
+    }
   </style>
 </head>
 
@@ -109,6 +128,7 @@
         <div id="choices"></div>
       </div>
     </div>
+    <div id="autoplay-indicator">AUTOPLAY</div>
   </div>
   <script type="module" src="/src/main.ts"></script>
 </body>

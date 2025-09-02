@@ -21,6 +21,12 @@ export class VNEngine {
   private waitingChoice = false;
   private waitTimer: number | null = null;
 
+  private isAutoplaying = false;
+  private autoplayTimer: number | null = null;
+  private autoplayDelay = 2000; // テキスト表示後の待機時間 (ms)
+  public autoplayChoice = true; // オートプレイ中の選択肢を自動選択するか
+  private isPausedOnText = false;
+
   private audio: AudioBus;
 
   constructor(
@@ -38,6 +44,34 @@ export class VNEngine {
 
   /** 任意：必要なら外から呼ぶ（今のAudioBusが自動再生試行型なら不要） */
   unlockAudio() { this.audio.unlock?.(); }
+
+  // ===== オートプレイ制御 =====
+  public startAutoplay(delay: number = this.autoplayDelay) {
+    this.autoplayDelay = delay;
+    if (this.isAutoplaying) return;
+    this.isAutoplaying = true;
+    document.body.classList.add('autoplay');
+    if (this.isPausedOnText && !this.textUI.isTyping) {
+      this.scheduleAutoplay();
+    }
+  }
+
+  public stopAutoplay() {
+    this.isAutoplaying = false;
+    document.body.classList.remove('autoplay');
+    if (this.autoplayTimer) {
+      clearTimeout(this.autoplayTimer);
+      this.autoplayTimer = null;
+    }
+  }
+
+  public toggleAutoplay(delay?: number) {
+    if (this.isAutoplaying) {
+      this.stopAutoplay();
+    } else {
+      this.startAutoplay(delay);
+    }
+  }
 
   // ===== インデックス系 =====
   private get lines(): Line[] { return this.blocks.get(this.currentBlock) ?? []; }
@@ -59,6 +93,8 @@ export class VNEngine {
   // ===== 進行制御 =====
   next() {
     if (this.waitingChoice) return;
+    this.isPausedOnText = false; // nextが呼ばれたらリセット
+    if (this.autoplayTimer) { clearTimeout(this.autoplayTimer); this.autoplayTimer = null; }
 
     // 「止まる必要がない行」は自動で連続消化する
     let guard = 0;
@@ -72,6 +108,7 @@ export class VNEngine {
   back() {
     if (this.waitingChoice) return;
     if (this.waitTimer) { clearTimeout(this.waitTimer); this.waitTimer = null; }
+    if (this.autoplayTimer) { clearTimeout(this.autoplayTimer); this.autoplayTimer = null; }
     if (this.idx <= 1) return;
     this.idx = Math.max(0, this.idx - 2);
     this.next();
@@ -79,6 +116,7 @@ export class VNEngine {
 
   completeOrNext() {
     if (this.waitingChoice) return;
+    if (this.autoplayTimer) { clearTimeout(this.autoplayTimer); this.autoplayTimer = null; }
     this.textUI.completeOr(() => this.next());
   }
 
@@ -126,7 +164,21 @@ export class VNEngine {
     if (!this.choiceUI) this.next();
   }
 
-  // ===== wait の解析（"500", "500ms", "0.5s" を許容）=====
+  // ===== オートプレイのスケジューリング =====
+  private scheduleAutoplay() {
+    if (!this.isAutoplaying || this.waitingChoice || this.waitTimer) {
+      return;
+    }
+    if (this.autoplayTimer) clearTimeout(this.autoplayTimer);
+
+    // タイピング完了後、指定された待機時間で次へ
+    this.autoplayTimer = window.setTimeout(() => {
+      this.autoplayTimer = null;
+      if (this.isAutoplaying) this.next();
+    }, this.autoplayDelay);
+  }
+
+  // ===== wait の解析（"500", "500ms", "0.5s" を許容）===== 
   private parseWait(v: string): number | null {
     const s = v.trim().toLowerCase();
     if (/^\d+$/.test(s)) return Math.max(0, parseInt(s, 10));
@@ -149,6 +201,30 @@ export class VNEngine {
     if (Array.isArray(line.choice) && line.choice.length > 0) {
       const visible = line.choice.filter((it) => this.isChoiceVisible(it));
       if (visible.length === 0) return false; // 何も出せないなら継続
+
+      // オートプレイ中かつ自動選択が有効なら、最初の選択肢を選ぶ
+      if (this.isAutoplaying && this.autoplayChoice) {
+        if (this.choiceUI) {
+          this.waitingChoice = true;
+          this.choiceUI.showAndAutopick(visible, 0, (i) => {
+            const picked = visible[i];
+            this.choiceUI!.hide();
+            this.waitingChoice = false;
+            this.applyChoiceFlags(picked?.set);
+            this.gotoFromChoice(picked?.goto);
+            this.next();
+          });
+          return true; // UIに任せて停止
+        } else {
+          // choiceUIがない場合は即時選択
+          const picked = visible[0];
+          this.applyChoiceFlags(picked?.set);
+          this.gotoFromChoice(picked?.goto);
+          return false; // 自動選択したので継続
+        }
+      }
+
+      this.stopAutoplay(); // 選択肢表示時はオートプレイを止める
       if (this.choiceUI) {
         this.waitingChoice = true;
         this.choiceUI.show(visible, (i) => {
@@ -233,9 +309,14 @@ export class VNEngine {
     return false;
   }
 
-  private speak(speaker: string, text: string) {
+  private speak(speaker: string, text:string) {
     this.state.speaker = speaker || "narrator";
     this.textUI.setSpeaker(this.state.speaker, this.script.characters ?? {});
-    this.textUI.typeTo(text);
+    this.textUI.typeTo(text, () => {
+      this.scheduleAutoplay();
+    });
+
+    // speakが呼ばれたらテキスト表示で停止するはずなので、フラグを立てる
+    this.isPausedOnText = true;
   }
 }

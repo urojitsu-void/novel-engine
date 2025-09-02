@@ -33,6 +33,10 @@ async function main() {
       unlockOnce();
       engine.completeOrNext();
     }
+    if (e.key === "a") {
+      unlockOnce();
+      engine.toggleAutoplay();
+    }
   });
   engine.next();
 }

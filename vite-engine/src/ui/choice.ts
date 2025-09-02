@@ -32,4 +32,25 @@ export class ChoiceUI {
     this.container.style.display = "none";
     this.container.innerHTML = "";
   }
+
+  showAndAutopick(items: ChoiceItem[], pickIndex: number, onPick: (index: number) => void, delay = 1000) {
+    this.container.innerHTML = "";
+    this.container.style.display = "block";
+
+    items.forEach((it, i) => {
+      const btn = document.createElement("button");
+      btn.className = "choice-btn";
+      btn.type = "button";
+      btn.textContent = it.text;
+      btn.disabled = true; // prevent user interaction
+      if (i === pickIndex) {
+        btn.classList.add("autopicked");
+      }
+      this.container.appendChild(btn);
+    });
+
+    setTimeout(() => {
+      onPick(pickIndex);
+    }, delay);
+  }
 }
