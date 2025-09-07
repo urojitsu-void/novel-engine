@@ -22,26 +22,52 @@
       overflow: hidden;
     }
 
-    .bg,
-    .chara {
+    .bg {
       position: absolute;
       width: 100%;
       height: 100%;
       object-fit: cover;
     }
 
-    .chara {
+    .charas-layer,
+    .chara-sprite {
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    .charas-layer {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+    }
+
+    .chara-sprite {
+      position: absolute;
       bottom: 0;
-      width: auto;
       height: 80%;
+      transition: opacity .2s ease, transform .2s ease;
+    }
+
+    .chara-sprite.pos-center {
       left: 50%;
       transform: translateX(-50%);
+    }
+
+    .chara-sprite.pos-left {
+      left: 6%;
+      transform: none;
+    }
+
+    .chara-sprite.pos-right {
+      right: 6%;
+      transform: none;
     }
 
     #wrap {
       position: fixed;
       bottom: 0;
       width: 100%;
+      z-index: 3;
     }
 
     #textbox {
@@ -53,6 +79,7 @@
       cursor: pointer;
       display: block;
       min-height: 100px;
+      z-index: 3;
     }
 
     #text {
@@ -119,8 +146,7 @@
 <body>
   <div id="vn">
     <img id="bg" class="bg" />
-    <img id="chara" class="chara" />
-
+    <div id="charas" class="charas-layer"></div>
     <div id="wrap">
       <div id="textbox">
         <div id="namebox"></div>

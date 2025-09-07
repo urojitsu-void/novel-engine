@@ -1,7 +1,7 @@
 import { Script, Line, LineObject, ControlKeys } from "../types";
 import { isLineObject } from "../script/parser";
 
-const CONTROL_KEY_SET = new Set<keyof ControlKeys>(["bg", "chara", "narrator", "sfx", "bgm", "wait"]);
+const CONTROL_KEY_SET = new Set<keyof ControlKeys>(["bg", "chara", "narrator", "sfx", "bgm", "wait", "actors"]);
 
 export function resolveAsset(baseDir: string, ref: string): string {
   if (!ref) return ref;

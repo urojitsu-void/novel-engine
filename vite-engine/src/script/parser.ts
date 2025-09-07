@@ -7,6 +7,7 @@ import type {
   LineObject,
   ChoiceItem,
   Character,
+  CharaPos,
 } from "../types";
 
 /** "/a/b/c.yaml" -> "/a/b/" */
@@ -16,6 +17,9 @@ function dirname(url: string): string {
   if (parts.at(-1)?.includes(".")) parts.pop();
   return parts.join("/") + "/";
 }
+
+const isCharaPos = (v: unknown): v is "left" | "center" | "right" =>
+  v === "left" || v === "center" || v === "right";
 
 /** ---- type guards / asserts ---- */
 function isPlainObject(v: unknown): v is Record<string, unknown> {
@@ -53,11 +57,14 @@ function validateCharacters(root: Record<string, unknown>): Record<string, Chara
     if (color != null) assert(isString(color), `characters.${key}.color`, "must be string");
     const chara = val["chara"];
     if (chara != null) assert(isString(chara), `characters.${key}.chara`, "must be string");
+    const pos = val["pos"];
+    if (pos != null) assert(isCharaPos(pos), `characters.${key}.pos`, `must be "left"|"center"|"right"`);
 
     out[key] = {
       name,
       color: color as string | undefined,
       chara: chara as string | undefined,
+      pos: pos as CharaPos
     };
   }
   return out;
@@ -141,6 +148,25 @@ function validateLineObject(
         assert(Array.isArray(v), `${path}.choice`, "must be an array");
         out[k] = v.map((it, i) => validateChoiceItem(it, `${path}.choice[${i}]`));
         break;
+      case "actors": {
+        assert(isPlainObject(v), `${path}.actors`, "must be an object map");
+        // 既知のキャラIDを使うため、loadScript 側から knownCharacters を渡す
+        const obj = v as Record<string, unknown>;
+        const validated: Record<string, { show?: boolean; pos?: "left" | "center" | "right"; chara?: string }> = {};
+        for (const [who, spec] of Object.entries(obj)) {
+          assert(isString(who) && who.trim(), `${path}.actors`, "character key must be string");
+          assert(isPlainObject(spec), `${path}.actors.${who}`, "must be an object");
+          const show = spec["show"];
+          if (show !== undefined) assert(typeof show === "boolean", `${path}.actors.${who}.show`, "must be boolean");
+          const pos = spec["pos"];
+          if (pos !== undefined) assert(isCharaPos(pos), `${path}.actors.${who}.pos`, `must be "left"|"center"|"right"`);
+          const chara = spec["chara"];
+          if (chara !== undefined) assert(isString(chara), `${path}.actors.${who}.chara`, "must be string");
+          validated[who] = { show: show as boolean | undefined, pos: pos as any, chara: chara as string | undefined };
+        }
+        out[k] = validated;
+        break;
+      }
       default:
         // speaker line
         assert(isString(v), `${path}.${k}`, "speaker line value must be string");

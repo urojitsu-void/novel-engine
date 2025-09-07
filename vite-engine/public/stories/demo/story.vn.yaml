@@ -2,8 +2,8 @@ id: short-story
 title: 港町の夜
 
 characters:
-  Akito: { name: "暁翔", color: "#4af", chara: ./akito.png }
-  Yuina: { name: "結菜", color: "#f8c", chara: ./yuina.png }
+  Akito: { name: "暁翔", color: "#4af", chara: ./akito.png, pos: left }
+  Yuina: { name: "結菜", color: "#f8c", chara: ./yuina.png, pos: right }
 
 story:
   - name: main
@@ -21,6 +21,7 @@ story:
 
   - name: port
     lines:
+      - actors: { Akito: { show: true }, Yuina: { show: true } }
       - Akito: "よお、遅かったな。"
       - narrator: "どう声をかける？"
       - choice:

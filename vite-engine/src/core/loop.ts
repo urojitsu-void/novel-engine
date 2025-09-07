@@ -1,17 +1,18 @@
 // src/core/loop.ts
-import { Script, EngineState, Line, LineObject, ChoiceItem } from "../types";
+import { Script, EngineState, Line, LineObject, ChoiceItem, ActorDirective, CharaPos } from "../types";
 import { TextUI } from "../ui/text";
 import { fadeSwap } from "../ui/visuals";
 import { extractSpeakers, resolveAsset } from "../assets/assets";
 import { isLineObject } from "../script/parser";
 import { ChoiceUI } from "../ui/choice";
 import { AudioBus } from "../ui/audio";
+import { CharasLayer } from "../ui/charas";
 
 type Pause = boolean; // true=ここで一旦停止（ユーザー操作/タイマー待ち）、false=自動で次の行へ
 
 export class VNEngine {
   private idx = 0;
-  private state: EngineState = { speaker: "narrator", bg: "", chara: null };
+  private state: EngineState = { speaker: "narrator", bg: "" };
 
   private currentBlock: string;
   private blocks = new Map<string, Line[]>();
@@ -28,18 +29,21 @@ export class VNEngine {
   private isPausedOnText = false;
 
   private audio: AudioBus;
+  private charas: CharasLayer;
 
   constructor(
     private script: Script,
     private textUI: TextUI,
     private bgEl: HTMLImageElement,
+    private charasEl: HTMLDivElement,
     private choiceUI?: ChoiceUI,
-    audioBus?: AudioBus
+    private audioBus?: AudioBus
   ) {
     script.story.forEach((b) => this.blocks.set(b.name, b.lines));
     this.currentBlock = this.blocks.has("main") ? "main" : script.story[0]?.name ?? "main";
     this.indexLabels();
     this.audio = audioBus ?? new AudioBus();
+    this.charas = new CharasLayer(charasEl);
   }
 
   /** 任意：必要なら外から呼ぶ（今のAudioBusが自動再生試行型なら不要） */
@@ -194,6 +198,7 @@ export class VNEngine {
     if (!isLineObject(line)) {
       // 純テキスト：ここで停止（ユーザー操作待ち）
       this.speak(this.state.speaker, line);
+      this.charas.focus(null);
       return true;
     }
 
@@ -244,6 +249,11 @@ export class VNEngine {
       return true;
     }
 
+    // まず actors（複数キャラ制御）を適用
+    if ((line as LineObject).actors) {
+      this.applyActors((line as LineObject).actors as Record<string, ActorDirective>);
+    }
+
     // goto（ジャンプして継続）
     if (typeof line.goto === "string" && line.goto.trim()) {
       this.resolveGotoTarget(line.goto.trim());
@@ -281,26 +291,28 @@ export class VNEngine {
       const src = resolveAsset(this.script.baseDir, line.bg);
       this.state.bg = src; fadeSwap(this.bgEl, src);
     }
-    if (line.chara !== undefined) {
-      const src = typeof line.chara === "string"
-        ? resolveAsset(this.script.baseDir, line.chara)
-        : null;
-      this.state.chara = src; this.textUI.showChara(src);
-    }
 
     // テキスト（表示があれば停止 / なければ継続）
     if (typeof line.narrator === "string") {
       this.speak("narrator", line.narrator);
+      this.charas.focus(null);
       return true;
     }
     const speakers = extractSpeakers(line as LineObject);
     if (speakers.length > 0) {
       const sp = speakers[0];
       const text = (line as LineObject)[sp];
-      if (this.state.chara === null) {
+      // 話者が未表示ならデフォで出す
+      if (!this.charas.has(sp)) {
         const info = this.script.characters?.[sp];
-        if (info?.chara) this.textUI.showChara(resolveAsset(this.script.baseDir, info.chara));
+        if (info?.chara) {
+          const src = resolveAsset(this.script.baseDir, info.chara);
+          const pos: CharaPos = info.pos ?? "center";
+          this.charas.show(sp, src, pos);
+        }
       }
+      // 話者にフォーカス（他は半透明）
+      this.charas.focus(sp);
       this.speak(sp, text);
       return true;
     }
@@ -309,7 +321,7 @@ export class VNEngine {
     return false;
   }
 
-  private speak(speaker: string, text:string) {
+  private speak(speaker: string, text: string) {
     this.state.speaker = speaker || "narrator";
     this.textUI.setSpeaker(this.state.speaker, this.script.characters ?? {});
     this.textUI.typeTo(text, () => {
@@ -318,5 +330,23 @@ export class VNEngine {
 
     // speakが呼ばれたらテキスト表示で停止するはずなので、フラグを立てる
     this.isPausedOnText = true;
+  }
+
+  private applyActors(upd: Record<string, ActorDirective>) {
+    for (const [who, spec] of Object.entries(upd)) {
+      const info = this.script.characters?.[who];
+      if (!info) continue; // 未定義キャラは無視
+
+      if (spec.show === false) {
+        this.charas.hide(who);
+        continue;
+      }
+      // show: true または省略 → 表示/更新
+      const base = spec.chara ?? info.chara;
+      if (!base) continue;
+      const src = resolveAsset(this.script.baseDir, base);
+      const pos: CharaPos = spec.pos ?? info.pos ?? "center";
+      this.charas.show(who, src, pos);
+    }
   }
 }

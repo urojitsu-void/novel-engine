@@ -1,5 +1,17 @@
-export type Character = { name: string; color?: string; chara?: string };
+export type CharaPos = "left" | "center" | "right";
 
+export type Character = {
+  name: string;
+  color?: string;
+  chara?: string;
+  pos?: CharaPos;
+};
+
+export type ActorDirective = {
+  show?: boolean;     // true=表示/更新, false=非表示
+  pos?: CharaPos;     // 省略時は characters.*.pos または "center"
+  chara?: string;     // 省略時は characters.*.chara
+};
 
 /** フラグは boolean/number/string を想定（truthy/falsy 判定） */
 export type Flags = Record<string, boolean | number | string>;
@@ -22,6 +34,7 @@ export type ControlKeys = {
   label?: string;               // ラベル宣言（次の行から実行）
   goto?: string;                // ジャンプ
   choice?: ChoiceItem[];        // 選択肢
+  actors?: Record<string, ActorDirective>;
 };
 
 export type LineObject = ControlKeys & Record<string, string>;
@@ -45,7 +58,6 @@ export type Script = {
 export type EngineState = {
   speaker: string;
   bg: string;
-  chara: string | null;
 };
 
 

@@ -10,28 +10,19 @@ export type TypingState = {
 
 export class TextUI {
   private typing: TypingState = { inProgress: false, fullText: "", speedMs: 18, onComplete: undefined };
-  constructor(private textEl: HTMLDivElement, private nameBoxEl: HTMLDivElement, private charaEl: HTMLImageElement) { }
+  constructor(private textEl: HTMLDivElement, private nameBoxEl: HTMLDivElement) { }
 
   public get isTyping(): boolean { return this.typing.inProgress; }
 
   setSpeaker(speaker: string, chars: Record<string, Character>) {
     if (speaker === "narrator") {
       this.nameBoxEl.style.display = "none";
-      this.showChara(null);
       return;
     }
     const info = chars[speaker];
     this.nameBoxEl.style.display = "block";
     this.nameBoxEl.textContent = info?.name ?? speaker;
     this.nameBoxEl.style.color = info?.color ?? "white";
-  }
-  showChara(src: string | null) {
-    if (src) {
-      this.charaEl.style.display = "block";
-      this.charaEl.src = src;
-      return;
-    }
-    this.charaEl.style.display = "none";
   }
   clearTyping() {
     this.typing.inProgress = false;
