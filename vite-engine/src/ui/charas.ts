@@ -19,6 +19,15 @@ export class CharasLayer {
     img.src = src;
     img.classList.remove("pos-left", "pos-center", "pos-right");
     img.classList.add(pos === "left" ? "pos-left" : pos === "right" ? "pos-right" : "pos-center");
+    this.setPos(id, pos);
+  }
+
+  /** 位置だけ変更（画像はそのまま） */
+  setPos(id: string, pos: CharaPos) {
+    const img = this.sprites.get(id);
+    if (!img) return;
+    img.classList.remove("pos-left", "pos-center", "pos-right");
+    img.classList.add(pos === "left" ? "pos-left" : pos === "right" ? "pos-right" : "pos-center");
   }
 
   hide(id: string) {

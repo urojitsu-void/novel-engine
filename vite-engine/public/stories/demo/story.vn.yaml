@@ -2,8 +2,8 @@ id: short-story
 title: 港町の夜
 
 characters:
-  Akito: { name: "暁翔", color: "#4af", chara: ./akito.png, pos: left }
-  Yuina: { name: "結菜", color: "#f8c", chara: ./yuina.png, pos: right }
+  Akito: { name: "暁翔", color: "#4af", chara: ./akito.png, pos: center }
+  Yuina: { name: "結菜", color: "#f8c", chara: ./yuina.png, pos: center }
 
 story:
   - name: main
@@ -11,6 +11,11 @@ story:
       - bgm: ./bgm.mp3
       - bg: ./bg_port.png
       - narrator: "港町の夜。波の音が静かに耳をくすぐる。"
+      - actors:
+          {
+            Akito: { pos: left, show: true },
+            Yuina: { pos: right, show: true },
+          }
       - choice:
           - text: "困っている結菜を助ける"
             goto: port
@@ -21,7 +26,6 @@ story:
 
   - name: port
     lines:
-      - actors: { Akito: { show: true }, Yuina: { show: true } }
       - Akito: "よお、遅かったな。"
       - narrator: "どう声をかける？"
       - choice:
@@ -55,7 +59,13 @@ story:
   - name: lighthouse
     lines:
       - bg: ./bg_lighthouse.png
+      - actors: { Akito: { show: false }, Yuina: { show: false } }
       - Yuina: "灯台の光って、不思議と心が落ち着くね。"
+      - actors:
+          {
+            Akito: { show: true, pos: right },
+            Yuina: { show: true, pos: left },
+          }
       - goto: end
 
   - name: end

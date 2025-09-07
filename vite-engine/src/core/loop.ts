@@ -335,18 +335,37 @@ export class VNEngine {
   private applyActors(upd: Record<string, ActorDirective>) {
     for (const [who, spec] of Object.entries(upd)) {
       const info = this.script.characters?.[who];
-      if (!info) continue; // 未定義キャラは無視
+      if (!info) continue;
 
+      const visible = this.charas.has(who);
+
+      // 1) 明示的に非表示
       if (spec.show === false) {
         this.charas.hide(who);
         continue;
       }
-      // show: true または省略 → 表示/更新
-      const base = spec.chara ?? info.chara;
-      if (!base) continue;
-      const src = resolveAsset(this.script.baseDir, base);
-      const pos: CharaPos = spec.pos ?? info.pos ?? "center";
-      this.charas.show(who, src, pos);
+
+      // 2) 表示/更新（どれか一つでも指定があれば更新対象）
+      const wantsUpdate =
+        spec.show === true || typeof spec.chara === "string" || spec.pos !== undefined;
+      if (!wantsUpdate) continue;
+
+      const posWanted: CharaPos = (spec.pos ?? info.pos ?? "center") as CharaPos;
+
+      if (typeof spec.chara === "string") {
+        // 画像と位置を同時に更新（既に表示中でもOK）
+        const src = resolveAsset(this.script.baseDir, spec.chara);
+        this.charas.show(who, src, posWanted);
+      } else if (visible) {
+        // 位置だけ更新
+        this.charas.setPos(who, posWanted);
+      } else {
+        // 未表示 → デフォ画像で出す（位置は posWanted）
+        if (info.chara) {
+          const src = resolveAsset(this.script.baseDir, info.chara);
+          this.charas.show(who, src, posWanted);
+        }
+      }
     }
   }
 }
