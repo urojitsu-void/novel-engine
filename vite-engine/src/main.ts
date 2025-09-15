@@ -23,18 +23,12 @@ async function main() {
   const overlay = new TsukkomiOverlay(document.getElementById("tsukkomi-overlay"));
 
   // ツッコミを用意（語り手は無視／連発防止1秒／モデル名は必要に応じて）
-  // const tsukkomi = new TsukkomiManager({
-  //   includeNarrator: false,
-  //   minGapMs: 1000,
-  //   model: "rolandroland/llama3.1-uncensored:latest",
-  // });
-
   const tsukkomi = new TsukkomiManager({
     includeNarrator: false,
     minGapMs: 1000,
     model: "rolandroland/llama3.1-uncensored:latest",
-    overlay,                                // ← ここで渡す
-    avatarImages: {                         // ← 任意：話者名→画像URL
+    overlay,
+    avatarImages: {
       "四国めたん": "/tsukkomi/metan.png",
       "ずんだもん": "/tsukkomi/zundamon.png",
       "春日部つむぎ": "/tsukkomi/tsumugi.png",
