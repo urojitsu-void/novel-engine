@@ -3,7 +3,7 @@ import { Script, EngineState, Line, LineObject, ChoiceItem, ActorDirective, Char
 import { TextUI } from "../ui/text";
 import { fadeSwap } from "../ui/visuals";
 import { extractSpeakers, resolveAsset } from "../assets/assets";
-import { isLineObject } from "../script/parser";
+import { isLineObject } from "../scripts/parser";
 import { ChoiceUI } from "../ui/choice";
 import { AudioBus } from "../ui/audio";
 import { CharasLayer } from "../ui/charas";

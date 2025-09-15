@@ -1,5 +1,5 @@
 import { Script, Line, LineObject, ControlKeys } from "../types";
-import { isLineObject } from "../script/parser";
+import { isLineObject } from "../scripts/parser";
 
 const CONTROL_KEY_SET = new Set<keyof ControlKeys>(["bg", "chara", "narrator", "sfx", "bgm", "wait", "actors"]);
 
