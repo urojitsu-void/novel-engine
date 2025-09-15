@@ -1,4 +1,4 @@
-import { loadScript } from "./script/parser";
+import { loadScript } from "./scripts/parser";
 import { VNEngine } from "./core/loop";
 import { TextUI } from "./ui/text";
 import { collectAssets, preloadAssets } from "./assets/assets";
