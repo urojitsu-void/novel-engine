@@ -86,7 +86,7 @@ function validateChoiceItem(v: unknown, path: string): ChoiceItem {
     const setObj: Record<string, boolean | number | string> = {};
     for (const [k, val] of Object.entries(setV)) {
       assert(isScalar(val), `${path}.set.${k}`, "must be boolean/number/string");
-      setObj[k] = val;
+      setObj[k] = val as boolean | number | string;
     }
     item.set = setObj;
   }
@@ -111,7 +111,7 @@ function validateLineObject(
   path: string,
   labels: Set<string>
 ): LineObject {
-  // 許可キー: bg, chara, narrator, sfx, bgm, wait, label, goto, choice
+  // 許可キー: bg, chara, narrator, sfx, bgm, wait, label, goto, choice, actors
   // それ以外は「スピーカー名」として扱い、値は string 必須
   const out: Record<string, unknown> = {};
 
@@ -146,14 +146,13 @@ function validateLineObject(
         break;
       case "choice":
         assert(Array.isArray(v), `${path}.choice`, "must be an array");
-        out[k] = v.map((it, i) => validateChoiceItem(it, `${path}.choice[${i}]`));
+        out[k] = (v as unknown[]).map((it, i) => validateChoiceItem(it, `${path}.choice[${i}]`));
         break;
       case "actors": {
         assert(isPlainObject(v), `${path}.actors`, "must be an object map");
-        // 既知のキャラIDを使うため、loadScript 側から knownCharacters を渡す
-        const obj = v as Record<string, unknown>;
+        const objActors = v as Record<string, unknown>;
         const validated: Record<string, { show?: boolean; pos?: "left" | "center" | "right"; chara?: string }> = {};
-        for (const [who, spec] of Object.entries(obj)) {
+        for (const [who, spec] of Object.entries(objActors)) {
           assert(isString(who) && who.trim(), `${path}.actors`, "character key must be string");
           assert(isPlainObject(spec), `${path}.actors.${who}`, "must be an object");
           const show = spec["show"];
@@ -162,7 +161,7 @@ function validateLineObject(
           if (pos !== undefined) assert(isCharaPos(pos), `${path}.actors.${who}.pos`, `must be "left"|"center"|"right"`);
           const chara = spec["chara"];
           if (chara !== undefined) assert(isString(chara), `${path}.actors.${who}.chara`, "must be string");
-          validated[who] = { show: show as boolean | undefined, pos: pos as any, chara: chara as string | undefined };
+          validated[who] = { show: show as boolean | undefined, pos: pos as CharaPos | undefined, chara: chara as string | undefined };
         }
         out[k] = validated;
         break;
@@ -247,17 +246,10 @@ function validateAndLinkStory(raw: unknown, basePath: string): { story: StoryBlo
   return { story, labels: labelMap };
 }
 
-/** ---- main loader ---- */
-export async function loadScript(url: string): Promise<Script> {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Failed to load script: ${url}`);
-  const text = await res.text();
-
-  // js-yaml の戻りは any だが、ここで unknown 型へ束縛してから絞り込む
-  const rootUnknown: unknown = yaml.load(text);
-  assert(isPlainObject(rootUnknown), "root", "YAML root must be an object");
-  const root = rootUnknown as Record<string, unknown>;
-
+/* ============================================================
+ *  コア：オブジェクト→Script に“検証して”変換する（fetch なし）
+ * ============================================================ */
+function buildScriptFromRoot(root: Record<string, unknown>, baseDir: string): Script {
   if (root["id"] != null) assert(isString(root["id"]), "id", "must be string");
   if (root["title"] != null) assert(isString(root["title"]), "title", "must be string");
 
@@ -266,14 +258,70 @@ export async function loadScript(url: string): Promise<Script> {
   const storyRaw = root["story"];
   const { story } = validateAndLinkStory(storyRaw, "story");
 
-  const baseDir = dirname(url);
-
-  const script: Script = {
+  return {
     id: String((root["id"] as string | undefined) ?? "story"),
     title: root["title"] as string | undefined,
     characters,
     story,
     baseDir,
   };
-  return script;
+}
+
+/* ============================================================
+ *  公開 API
+ * ============================================================ */
+
+/**
+ * YAML テキストを受け取り、検証済み Script を返す（fetch なし）。
+ * sourceUrl（任意）を渡すと baseDir をその URL から計算。
+ * 省略時 baseDir は ""。
+ */
+export function parseScriptYAML(text: string, opts?: { sourceUrl?: string; baseDir?: string }): Script {
+  const rootUnknown: unknown = yaml.load(text);
+  assert(isPlainObject(rootUnknown), "root", "YAML root must be an object");
+  const root = rootUnknown as Record<string, unknown>;
+  const baseDir =
+    opts?.baseDir ??
+    (opts?.sourceUrl ? dirname(opts.sourceUrl) : "");
+  return buildScriptFromRoot(root, baseDir);
+}
+
+/**
+ * 既にパース済みの root オブジェクトを検証して Script を返す（fetch なし）。
+ * baseDir を明示的に指定できる。
+ */
+export function validateScriptObject(rootUnknown: unknown, opts?: { baseDir?: string }): Script {
+  assert(isPlainObject(rootUnknown), "root", "YAML root must be an object");
+  const root = rootUnknown as Record<string, unknown>;
+  const baseDir = opts?.baseDir ?? "";
+  return buildScriptFromRoot(root, baseDir);
+}
+
+/**
+ * YAML テキストを検証だけ行いたい場合のユーティリティ（例：エディタ側の即時検証）。
+ * 例外を投げずに結果を返す。
+ */
+export function tryValidateScriptYAML(
+  text: string,
+  opts?: { sourceUrl?: string; baseDir?: string }
+): { ok: true; script: Script } | { ok: false; error: string } {
+  try {
+    const script = parseScriptYAML(text, opts);
+    return { ok: true, script };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return { ok: false, error: msg };
+  }
+}
+
+/**
+ * 旧来の URL 読み込み（fetch あり）エントリ。
+ * 取得後は parseScriptYAML で検証・構築。
+ */
+export async function loadScript(url: string): Promise<Script> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Failed to load script: ${url}`);
+  const text = await res.text();
+  // url から baseDir を導出
+  return parseScriptYAML(text, { sourceUrl: url });
 }
