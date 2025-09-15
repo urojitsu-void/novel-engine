@@ -22,7 +22,7 @@ export class VNEngine {
   private waitingChoice = false;
   private waitTimer: number | null = null;
 
-  private isAutoplaying = false;
+  public isAutoplaying = false;
   private autoplayTimer: number | null = null;
   private autoplayDelay = 2000; // テキスト表示後の待機時間 (ms)
   public autoplayChoice = true; // オートプレイ中の選択肢を自動選択するか
@@ -31,13 +31,16 @@ export class VNEngine {
   private audio: AudioBus;
   private charas: CharasLayer;
 
+  /** 台詞フック: speak() の最後で呼ばれる */
+  public onSpeak?: (speaker: string, text: string) => void;
+
   constructor(
     private script: Script,
     private textUI: TextUI,
     private bgEl: HTMLImageElement,
-    private charasEl: HTMLDivElement,
+    charasEl: HTMLDivElement,
     private choiceUI?: ChoiceUI,
-    private audioBus?: AudioBus
+    audioBus?: AudioBus
   ) {
     script.story.forEach((b) => this.blocks.set(b.name, b.lines));
     this.currentBlock = this.blocks.has("main") ? "main" : script.story[0]?.name ?? "main";
@@ -321,14 +324,25 @@ export class VNEngine {
     return false;
   }
 
+
   private speak(speaker: string, text: string) {
     this.state.speaker = speaker || "narrator";
     this.textUI.setSpeaker(this.state.speaker, this.script.characters ?? {});
-    this.textUI.typeTo(text, () => {
-      this.scheduleAutoplay();
+
+    // onSpeak の Promise を拾って保持
+    const hookP = this.onSpeak?.(this.state.speaker, text);
+
+    // タイピング完了後に、hook があればそれを待ってからオート送りをスケジュール
+    this.textUI.typeTo(text, async () => {
+      try {
+        if (hookP) {
+          await hookP; // ★ ツッコミ完全終了まで待つ
+        }
+      } finally {
+        this.scheduleAutoplay(); // isAutoplaying 等の条件は既存のまま機能
+      }
     });
 
-    // speakが呼ばれたらテキスト表示で停止するはずなので、フラグを立てる
     this.isPausedOnText = true;
   }
 

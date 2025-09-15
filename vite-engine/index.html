@@ -63,6 +63,54 @@
       transform: none;
     }
 
+    #tsukkomi-overlay {
+      position: absolute;
+      left: 12px;
+      bottom: 160px;
+      /* テキストボックスより少し上に */
+      z-index: 5;
+      /* textbox(3) より前面に */
+      gap: 10px;
+      align-items: flex-end;
+      pointer-events: none;
+      /* クリックは透過 */
+      max-width: min(48vw, 640px);
+    }
+
+    #tsukkomi-overlay .avatar {
+      width: 72px;
+      height: 72px;
+      flex: 0 0 72px;
+      /* フレックスで縮まない */
+      border-radius: 8px;
+      background-color: #222;
+      background-repeat: no-repeat;
+      background-size: contain;
+      /* ボックス一杯に表示（はみ出しはトリム） */
+      background-position: center;
+      /* 左上基準 */
+      box-shadow: 0 6px 20px rgba(0, 0, 0, .35);
+    }
+
+    #tsukkomi-overlay .bubble {
+      background: rgba(0, 0, 0, .78);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, .15);
+      border-radius: 10px;
+      padding: 10px 12px;
+      line-height: 1.6;
+      font-size: 16px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, .25);
+    }
+
+    #tsukkomi-overlay .name {
+      display: block;
+      font-weight: 700;
+      opacity: .9;
+      margin-bottom: 4px;
+      font-size: 14px;
+    }
+
     #wrap {
       position: fixed;
       bottom: 0;
@@ -147,6 +195,15 @@
   <div id="vn">
     <img id="bg" class="bg" />
     <div id="charas" class="charas-layer"></div>
+
+    <div id="tsukkomi-overlay" style="display:none;">
+      <div class="avatar"></div>
+      <div class="bubble">
+        <span class="name"></span>
+        <div class="text"></div>
+      </div>
+    </div>
+
     <div id="wrap">
       <div id="textbox">
         <div id="namebox"></div>

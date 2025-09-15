@@ -59,13 +59,8 @@ story:
   - name: lighthouse
     lines:
       - bg: ./bg_lighthouse.png
-      - actors: { Akito: { show: false }, Yuina: { show: false } }
+      - actors: { Akito: { pos: right }, Yuina: { pos: left } }
       - Yuina: "灯台の光って、不思議と心が落ち着くね。"
-      - actors:
-          {
-            Akito: { show: true, pos: right },
-            Yuina: { show: true, pos: left },
-          }
       - goto: end
 
   - name: end

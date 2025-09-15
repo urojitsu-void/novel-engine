@@ -3,6 +3,8 @@ import { VNEngine } from "./core/loop";
 import { TextUI } from "./ui/text";
 import { collectAssets, preloadAssets } from "./assets/assets";
 import { ChoiceUI } from "./ui/choice";
+import { TsukkomiOverlay } from "./ui/tsukkomi";
+import { TsukkomiManager } from "./integrations/tsukkomi";
 
 declare const __STORY__: string;
 
@@ -18,6 +20,43 @@ async function main() {
   const textUI = new TextUI(textEl, nameBoxEl);
   const choiceUI = new ChoiceUI(choicesEl);
   const engine = new VNEngine(script, textUI, bgEl, charasEl, choiceUI);
+  const overlay = new TsukkomiOverlay(document.getElementById("tsukkomi-overlay"));
+
+  // ツッコミを用意（語り手は無視／連発防止1秒／モデル名は必要に応じて）
+  // const tsukkomi = new TsukkomiManager({
+  //   includeNarrator: false,
+  //   minGapMs: 1000,
+  //   model: "rolandroland/llama3.1-uncensored:latest",
+  // });
+
+  const tsukkomi = new TsukkomiManager({
+    includeNarrator: false,
+    minGapMs: 1000,
+    model: "rolandroland/llama3.1-uncensored:latest",
+    overlay,                                // ← ここで渡す
+    avatarImages: {                         // ← 任意：話者名→画像URL
+      "四国めたん": "/tsukkomi/metan.png",
+      "ずんだもん": "/tsukkomi/zundamon.png",
+      "春日部つむぎ": "/tsukkomi/tsumugi.png",
+      "ぞん子": "/tsukkomi/zun.png",
+      "九州そら": "/tsukkomi/sora.png",
+      "春歌ナナ": "/tsukkomi/nana.png",
+      "冥鳴ひまり": "/tsukkomi/himari.png",
+      "玄野武宏": "/tsukkomi/takehiro.png",
+      "Voidoll": "/tsukkomi/voidoll.png",
+
+    },
+  });
+  await tsukkomi.init();
+
+  // 台詞ごとに呼ぶ
+  engine.onSpeak = async (speaker, text) => {
+    if (engine.isAutoplaying) {
+      // 例: 選択肢やシステムメッセージを弾きたいならこの辺で条件分岐
+      await tsukkomi.onLine(speaker, text);
+    }
+  };
+
 
   let unlocked = false;
   function unlockOnce() {
