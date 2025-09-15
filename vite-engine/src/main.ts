@@ -9,7 +9,7 @@ import { TsukkomiManager } from "./integrations/tsukkomi";
 declare const __STORY__: string;
 
 async function main() {
-  const script = await loadScript(`/stories/${__STORY__ || 'demo'}/story.vn.yaml`);
+  const script = await loadScript(`/stories/${__STORY__ || 'yakisoba'}/story.vn.yaml`);
   document.title = script.title || 'ノベルゲーム';
   const bgEl = document.getElementById("bg") as HTMLImageElement;
   const charasEl = document.getElementById("charas") as HTMLDivElement;
@@ -32,7 +32,7 @@ async function main() {
       "四国めたん": "/tsukkomi/metan.png",
       "ずんだもん": "/tsukkomi/zundamon.png",
       "春日部つむぎ": "/tsukkomi/tsumugi.png",
-      "ぞん子": "/tsukkomi/zun.png",
+      "ぞん子": "/tsukkomi/zonko.png",
       "九州そら": "/tsukkomi/sora.png",
       "春歌ナナ": "/tsukkomi/nana.png",
       "冥鳴ひまり": "/tsukkomi/himari.png",
