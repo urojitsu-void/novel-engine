@@ -151,7 +151,6 @@ story:
 
   - name: principalReveal
     lines:
-      - bgm: ./bg_principal.mp3
       - actors:
           Principal: { show: true, pos: center }
           Player: { show: true, pos: left }
