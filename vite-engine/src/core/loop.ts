@@ -331,12 +331,12 @@ export class VNEngine {
     this.state.speaker = speaker || "narrator";
     this.textUI.setSpeaker(this.state.speaker, this.script.characters ?? {});
 
-    // onSpeak の Promise を拾って保持
-    const hookP = this.onSpeak?.(this.state.speaker, text);
 
     // タイピング完了後に、hook があればそれを待ってからオート送りをスケジュール
     this.textUI.typeTo(text, async () => {
       try {
+        // onSpeak の Promise を拾って保持
+        const hookP = this.onSpeak?.(this.state.speaker, text);
         if (hookP) {
           await hookP; // ★ ツッコミ完全終了まで待つ
         }

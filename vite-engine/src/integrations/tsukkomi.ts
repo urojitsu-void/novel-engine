@@ -41,6 +41,8 @@ export type TsukkomiOptions = TsukkomiConfig & {
 const DEFAULT_VV_HOST = "http://127.0.0.1:50021";
 const DEFAULT_OLLAMA_HOST = "http://127.0.0.1:11434";
 
+const sleep = (time: number) => new Promise((resolve) => setTimeout(resolve, time));
+
 export class TsukkomiManager {
   // 設定
   private enabled = true;
@@ -197,6 +199,7 @@ export class TsukkomiManager {
       window.addEventListener("touchstart", retry, { once: true });
     }
 
+    await sleep(1000)
     await waitEnded();
   }
 }
