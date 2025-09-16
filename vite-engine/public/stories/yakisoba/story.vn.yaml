@@ -59,7 +59,6 @@ story:
 
   - name: skip
     lines:
-      - bg: ./bg_cafeteria.png
       - actors:
           Player: { show: true, pos: center }
           Sensei: { show: true, pos: left }
@@ -67,6 +66,7 @@ story:
           Yakisoba: { show: false }
           Principal: { show: false }
           Alien: { show: false }
+      - bg: ./bg_cafeteria.png
       - narrator: "購買に行ったら普通に焼きそばパンが売っていた。"
       - narrator: "……なんかもうこれでよくない？"
       - Sensei: "バカ者ォォォ！それは麺が違う！！"
@@ -75,7 +75,6 @@ story:
   - name: duel
     lines:
       - bgm: ./bg_battle.mp3
-      - bg: ./bg_gym.png
       - actors:
           Player: { show: true, pos: left }
           Rival: { show: true, pos: right }
@@ -83,6 +82,7 @@ story:
           Yakisoba: { show: false }
           Principal: { show: false }
           Alien: { show: false }
+      - bg: ./bg_gym.png
       - narrator: "体育館で焼きそばバトルだ！"
       - narrator: "※ただの腕相撲"
       - sfx: ./armwrestle.mp3
@@ -94,7 +94,6 @@ story:
 
   - name: friendship
     lines:
-      - bg: ./bg_cafeteria.png
       - actors:
           Player: { show: true, pos: left }
           Rival: { show: true, pos: right }
@@ -102,12 +101,12 @@ story:
           Yakisoba: { show: false }
           Principal: { show: false }
           Alien: { show: false }
+      - bg: ./bg_cafeteria.png
       - Rival: "……お前と一緒に食う焼きそば、悪くないかもな。"
       - goto: yakisoba
 
   - name: win
     lines:
-      - bg: ./bg_gym.png
       - actors:
           Player: { show: true, pos: left }
           Rival: { show: true, pos: right }
@@ -115,12 +114,12 @@ story:
           Yakisoba: { show: false }
           Principal: { show: false }
           Alien: { show: false }
+      - bg: ./bg_gym.png
       - Rival: "ぐぬぬ……！お前の焼きそば愛に負けた……！"
       - goto: yakisoba
 
   - name: lose
     lines:
-      - bg: ./bg_gym.png
       - actors:
           Player: { show: true, pos: left }
           Rival: { show: true, pos: right }
@@ -128,6 +127,7 @@ story:
           Yakisoba: { show: false }
           Principal: { show: false }
           Alien: { show: false }
+      - bg: ./bg_gym.png
       - Rival: "俺の勝ちだ！焼きそばはいただく！"
       - narrator: "……その瞬間、校舎が光に包まれた。"
       - goto: principalReveal
@@ -135,7 +135,6 @@ story:
   - name: yakisoba
     lines:
       - bgm: ./bg_cafeteria.mp3
-      - bg: ./bg_cafeteria.png
       - actors:
           Player: { show: true, pos: left }
           Rival: { show: true, pos: right }
@@ -143,9 +142,9 @@ story:
           Sensei: { show: false }
           Principal: { show: false }
           Alien: { show: false }
+      - bg: ./bg_cafeteria.png
       - Yakisoba: "（ﾁｮｯﾄﾏｯﾃﾈ 3ﾌﾝ…）"
       - sfx: ./water_pour.mp3
-      - wait: "2s"
       - Yakisoba: "完成！ボクが伝説のカップ焼きそばだよ！"
       - narrator: "主人公たちは焼きそばをすすった。味は……普通だった。"
       - goto: principalReveal
@@ -153,7 +152,6 @@ story:
   - name: principalReveal
     lines:
       - bgm: ./bg_principal.mp3
-      - bg: ./bg_principal.png
       - actors:
           Principal: { show: true, pos: center }
           Player: { show: true, pos: left }
@@ -161,6 +159,7 @@ story:
           Rival: { show: false }
           Yakisoba: { show: false }
           Alien: { show: false }
+      - bg: ./bg_principal.png
       - Principal: "フハハ！我こそ焼きそばそのもの！校長兼カップ麺の化身だ！"
       - Sensei: "なんだと！？"
       - choice:
@@ -172,7 +171,6 @@ story:
   - name: bossFight
     lines:
       - bgm: ./bg_battle.mp3
-      - bg: ./bg_rooftop.png
       - actors:
           Player: { show: true, pos: left }
           Principal: { show: true, pos: right }
@@ -180,18 +178,22 @@ story:
           Rival: { show: false }
           Yakisoba: { show: false }
           Alien: { show: false }
+      - bg: ./bg_rooftop.png
       - narrator: "屋上で最終決戦が始まった。"
       - Principal: "来い！麺の裁きだ！！"
       - choice:
           - text: "勇気を振り絞る"
             goto: finalVictory
+            require: serious # serious=1 のときだけ表示
+          - text: "相手の出方を伺う"
+            goto: badEnd
+            requireNot: serious # serious=0 のときだけ表示
           - text: "負けを認める"
             goto: badEnd
 
   - name: absorb
     lines:
       - bgm: ./bg_alien.mp3
-      - bg: ./bg_cafeteria.png
       - actors:
           Player: { show: true, pos: left }
           Principal: { show: true, pos: right }
@@ -199,6 +201,7 @@ story:
           Rival: { show: false }
           Yakisoba: { show: false }
           Alien: { show: false }
+      - bg: ./bg_cafeteria.png
       - narrator: "主人公は校長＝焼きそばをそのまま食べた。"
       - narrator: "……すると宇宙から謎の信号が届く。"
       - actors:
@@ -214,7 +217,6 @@ story:
 
   - name: finalVictory
     lines:
-      - bg: ./bg_rooftop.png
       - actors:
           Player: { show: true, pos: left }
           Principal: { show: true, pos: right }
@@ -222,35 +224,33 @@ story:
           Rival: { show: false }
           Yakisoba: { show: false }
           Alien: { show: false }
+      - bg: ./bg_rooftop.png
       - narrator: "主人公は焼きそばソード（箸）を振るった！"
+      - actors:
+          Player: { show: true, pos: center }
       - Principal: "ぐわぁぁぁ！ソースが足りぬぅぅ！"
       - sfx: ./explosion.mp3
       - actors:
           Player: { show: true, pos: left }
           Principal: { show: false }
-          Sensei: { show: false }
-          Rival: { show: false }
-          Yakisoba: { show: false }
-          Alien: { show: false }
       - narrator: "校長は粉末ソースと共に爆散した。"
       - goto: goodEnd
 
   - name: badEnd
     lines:
-      - bg: ./bg_rooftop.png
       - actors:
-          Player: { show: true, pos: center }
-          Principal: { show: true, pos: right }
+          Player: { show: true }
+          Principal: { show: true }
           Sensei: { show: false }
           Rival: { show: false }
           Yakisoba: { show: false }
           Alien: { show: false }
+      - bg: ./bg_rooftop.png
       - narrator: "主人公は床に座り込み、ただカップ焼きそばの香りに包まれて死んだ。"
       - goto: end
 
   - name: alienEnd
     lines:
-      - bg: ./bg_space.png
       - actors:
           Alien: { show: true, pos: center }
           Player: { show: true, pos: left }
@@ -258,6 +258,7 @@ story:
           Sensei: { show: false }
           Rival: { show: false }
           Yakisoba: { show: false }
+      - bg: ./bg_space.png
       - Alien: "我ラハ焼きそば星人……！"
       - narrator: "地球はカップ麺帝国に支配された。"
       - goto: end
@@ -265,7 +266,6 @@ story:
   - name: goodEnd
     lines:
       - bgm: ./bg_goodend.mp3
-      - bg: ./bg_school.png
       - actors:
           Player: { show: true, pos: left }
           Rival: { show: true, pos: right }
@@ -273,6 +273,7 @@ story:
           Yakisoba: { show: false }
           Principal: { show: false }
           Alien: { show: false }
+      - bg: ./bg_school.png
       - narrator: "学園に平和が戻った。"
       - Rival: "……次はうどんで勝負だ。"
       - narrator: "こうして『焼きそば黙示録』は幕を閉じた。"
