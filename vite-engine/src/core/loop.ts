@@ -210,25 +210,27 @@ export class VNEngine {
       const visible = line.choice.filter((it) => this.isChoiceVisible(it));
       if (visible.length === 0) return false; // 何も出せないなら継続
 
-      // オートプレイ中かつ自動選択が有効なら、最初の選択肢を選ぶ
+      // オートプレイ中：ランダム選択
       if (this.isAutoplaying && this.autoplayChoice) {
+        const pickIndex = Math.floor(Math.random() * visible.length);
+
         if (this.choiceUI) {
           this.waitingChoice = true;
-          this.choiceUI.showAndAutopick(visible, 0, (i) => {
+          this.choiceUI.showAndAutopick(visible, pickIndex, (i) => {
             const picked = visible[i];
             this.choiceUI!.hide();
             this.waitingChoice = false;
             this.applyChoiceFlags(picked?.set);
             this.gotoFromChoice(picked?.goto);
-            this.next();
+            this.next(); // 自動で次へ
           });
-          return true; // UIに任せて停止
+          return true; // UIに任せる
         } else {
-          // choiceUIがない場合は即時選択
-          const picked = visible[0];
+          // UIが無い場合もランダムで即時適用
+          const picked = visible[pickIndex];
           this.applyChoiceFlags(picked?.set);
           this.gotoFromChoice(picked?.goto);
-          return false; // 自動選択したので継続
+          return false; // 継続実行
         }
       }
 

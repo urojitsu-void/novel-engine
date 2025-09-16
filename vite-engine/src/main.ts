@@ -18,7 +18,7 @@ async function main() {
   const choicesEl = document.getElementById("choices") as HTMLDivElement
   preloadAssets(collectAssets(script));
   const textUI = new TextUI(textEl, nameBoxEl);
-  const choiceUI = new ChoiceUI(choicesEl);
+  const choiceUI = new ChoiceUI(choicesEl, { blinkMs: 3000 });
   const engine = new VNEngine(script, textUI, bgEl, charasEl, choiceUI);
   const overlay = new TsukkomiOverlay(document.getElementById("tsukkomi-overlay"));
 
@@ -38,7 +38,6 @@ async function main() {
       "冥鳴ひまり": "/tsukkomi/himari.png",
       "玄野武宏": "/tsukkomi/takehiro.png",
       "Voidoll": "/tsukkomi/voidoll.png",
-
     },
   });
   await tsukkomi.init();

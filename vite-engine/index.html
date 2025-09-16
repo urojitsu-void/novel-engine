@@ -66,7 +66,7 @@
     #tsukkomi-overlay {
       position: absolute;
       left: 12px;
-      bottom: 160px;
+      top: 12px;
       /* テキストボックスより少し上に */
       z-index: 5;
       /* textbox(3) より前面に */
@@ -78,9 +78,9 @@
     }
 
     #tsukkomi-overlay .avatar {
-      width: 72px;
-      height: 72px;
-      flex: 0 0 72px;
+      width: 96px;
+      height: 96px;
+      flex: 0 0 96px;
       /* フレックスで縮まない */
       border-radius: 8px;
       background-color: #222;
@@ -99,7 +99,7 @@
       border-radius: 10px;
       padding: 10px 12px;
       line-height: 1.6;
-      font-size: 16px;
+      font-size: 24px;
       box-shadow: 0 6px 20px rgba(0, 0, 0, .25);
     }
 
@@ -123,7 +123,7 @@
       padding: 1em;
       box-sizing: border-box;
       color: #fff;
-      font-size: 18px;
+      font-size: 28px;
       cursor: pointer;
       display: block;
       min-height: 100px;
@@ -152,10 +152,31 @@
       border: 1px solid rgba(255, 255, 255, 0.2);
       border-radius: 6px;
       cursor: pointer;
+      font-size: 24px;
     }
 
-    #choices .choice-btn:hover {
-      background: rgba(255, 255, 255, 0.16);
+    /* クリック時のフラッシュを「色」で点滅」 */
+    #choices .choice-btn.flash,
+    #choices .choice-btn.flash:hover {
+      animation: vn-choice-flash-color 0.75s ease-in-out 4 alternate;
+    }
+
+    @keyframes vn-choice-flash-color {
+      0% {
+        /* 通常色（既存と同じにする） */
+        background: rgba(255, 255, 255, 0.10);
+        border-color: rgba(255, 255, 255, 0.2);
+        color: #fff;
+        box-shadow: none;
+      }
+
+      100% {
+        /* ハイライト色（好きに変えてOK） */
+        background: #ffd54f;
+        border-color: #ffd54f;
+        color: #fff;
+        box-shadow: 0 0 0 2px rgba(255, 106, 0, 0.35);
+      }
     }
 
     #namebox {
