@@ -1,7 +1,8 @@
 // scripts/validate.ts
 /**
- * VN YAML Validator (TypeScript)
- * - YAML 構文/スキーマ検証 + 同一フォルダ内ファイル存在チェック
+ * VN YAML Validator (TypeScript, parseScriptYAML 版)
+ * - YAML構文/スキーマ検証（src/script/parser.ts の parseScriptYAML を使用）
+ * - 同一フォルダ内アセット参照（bg/bgm/sfx/chara）チェック
  *
  * 使い方:
  *   pnpm run validate:story -- stories/demo/story.vn.yaml
@@ -11,9 +12,8 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import * as yaml from "js-yaml";
-import { validateScriptObject, isLineObject } from "./parser";
-import type { Script, LineObject } from "../types";
+import { parseScriptYAML, isLineObject } from "./parser";
+import type { Script } from "../types";
 
 /* ========== CLI 引数 ========= */
 type CliArgs = { _: string[]; quiet?: boolean };
@@ -31,7 +31,6 @@ function parseArgs(argv: string[]): CliArgs {
 function isYamlFile(p: string): boolean {
   return /\.(ya?ml)$/i.test(p);
 }
-
 function collectYamlFiles(inputPath: string): string[] {
   const st = fs.statSync(inputPath);
   if (st.isFile()) return isYamlFile(inputPath) ? [inputPath] : [];
@@ -48,8 +47,8 @@ function collectYamlFiles(inputPath: string): string[] {
   return [];
 }
 
-/** js-yaml 構文エラーを行/列つきで整形 */
-function formatYamlError(e: unknown): string {
+/** 例外に js-yaml の mark があれば行/列を付与して整形 */
+function formatYamlLikeError(e: unknown): string {
   const err = e as any;
   const where =
     err?.mark && typeof err.mark.line === "number"
@@ -60,27 +59,16 @@ function formatYamlError(e: unknown): string {
 }
 
 /* ========== 同一フォルダ・存在チェック ========= */
-
-/** パスが「同一フォルダ直下のファイル」かを判定し、ファイル名を返す */
 function normalizeSameDirPath(raw: string): { ok: boolean; name?: string; reason?: string } {
   let p = raw.trim();
   if (!p) return { ok: false, reason: "empty path" };
-  // 絶対/URLは不可
-  if (p.startsWith("http://") || p.startsWith("https://")) {
-    return { ok: false, reason: "URL is not allowed" };
-  }
-  if (p.startsWith("/")) {
-    return { ok: false, reason: "absolute path is not allowed" };
-  }
+  if (p.startsWith("http://") || p.startsWith("https://")) return { ok: false, reason: "URL is not allowed" };
+  if (p.startsWith("/")) return { ok: false, reason: "absolute path is not allowed" };
   if (p.startsWith("./")) p = p.slice(2);
-  // サブディレクトリ禁止
-  if (p.includes("/") || p.includes("\\")) {
-    return { ok: false, reason: "must be in the same folder (no subdirectories)" };
-  }
+  if (p.includes("/") || p.includes("\\")) return { ok: false, reason: "must be in the same folder (no subdirectories)" };
   return { ok: true, name: p };
 }
 
-/** Script から参照アセットを収集してエラーメッセージを返す */
 function checkAssetsSameFolder(script: Script, yamlAbsPath: string): string[] {
   const errors: string[] = [];
   const folder = path.dirname(yamlAbsPath);
@@ -92,67 +80,40 @@ function checkAssetsSameFolder(script: Script, yamlAbsPath: string): string[] {
       const norm = normalizeSameDirPath(c.chara);
       if (!norm.ok) {
         errors.push(`characters.${charId}.chara: ${norm.reason} ("${c.chara}")`);
-      } else {
-        const full = path.join(folder, norm.name!);
-        if (!fs.existsSync(full)) {
-          errors.push(`characters.${charId}.chara: file not found next to YAML ("${norm.name}")`);
-        }
+      } else if (!fs.existsSync(path.join(folder, norm.name!))) {
+        errors.push(`characters.${charId}.chara: file not found next to YAML ("${norm.name}")`);
       }
     }
   }
 
   // story blocks
   for (const block of script.story) {
-    const lines = block.lines;
-    lines.forEach((ln, idx) => {
+    block.lines.forEach((ln, idx) => {
       if (!isLineObject(ln)) return;
       const pfx = `story["${block.name}"].lines[${idx}]`;
 
-      // bg
-      if (typeof ln.bg === "string") {
-        const norm = normalizeSameDirPath(ln.bg);
-        if (!norm.ok) errors.push(`${pfx}.bg: ${norm.reason} ("${ln.bg}")`);
+      const chk = (val: unknown, key: string) => {
+        if (typeof val !== "string") return;
+        const norm = normalizeSameDirPath(val);
+        if (!norm.ok) errors.push(`${pfx}.${key}: ${norm.reason} ("${val}")`);
         else if (!fs.existsSync(path.join(folder, norm.name!))) {
-          errors.push(`${pfx}.bg: file not found ("${norm.name}")`);
+          errors.push(`${pfx}.${key}: file not found ("${norm.name}")`);
         }
-      }
+      };
 
-      // bgm
-      if (typeof ln.bgm === "string" && ln.bgm !== "stop") {
-        const norm = normalizeSameDirPath(ln.bgm);
-        if (!norm.ok) errors.push(`${pfx}.bgm: ${norm.reason} ("${ln.bgm}")`);
-        else if (!fs.existsSync(path.join(folder, norm.name!))) {
-          errors.push(`${pfx}.bgm: file not found ("${norm.name}")`);
-        }
-      }
+      chk(ln.bg, "bg");
+      if (typeof ln.bgm === "string" && ln.bgm !== "stop") chk(ln.bgm, "bgm");
+      chk(ln.sfx, "sfx");
+      chk(ln.chara as string | undefined, "chara");
 
-      // sfx
-      if (typeof ln.sfx === "string") {
-        const norm = normalizeSameDirPath(ln.sfx);
-        if (!norm.ok) errors.push(`${pfx}.sfx: ${norm.reason} ("${ln.sfx}")`);
-        else if (!fs.existsSync(path.join(folder, norm.name!))) {
-          errors.push(`${pfx}.sfx: file not found ("${norm.name}")`);
-        }
-      }
-
-      // line-level chara
-      if (typeof ln.chara === "string") {
-        const norm = normalizeSameDirPath(ln.chara);
-        if (!norm.ok) errors.push(`${pfx}.chara: ${norm.reason} ("${ln.chara}")`);
-        else if (!fs.existsSync(path.join(folder, norm.name!))) {
-          errors.push(`${pfx}.chara: file not found ("${norm.name}")`);
-        }
-      }
-
-      // actors.*.chara
       if (ln.actors && typeof ln.actors === "object") {
         for (const [who, spec] of Object.entries(ln.actors as Record<string, { chara?: string }>)) {
-          const chara = spec?.chara;
-          if (!chara) continue;
-          const norm = normalizeSameDirPath(chara);
-          if (!norm.ok) errors.push(`${pfx}.actors.${who}.chara: ${norm.reason} ("${chara}")`);
-          else if (!fs.existsSync(path.join(folder, norm.name!))) {
-            errors.push(`${pfx}.actors.${who}.chara: file not found ("${norm.name}")`);
+          if (spec?.chara) {
+            const norm = normalizeSameDirPath(spec.chara);
+            if (!norm.ok) errors.push(`${pfx}.actors.${who}.chara: ${norm.reason} ("${spec.chara}")`);
+            else if (!fs.existsSync(path.join(folder, norm.name!))) {
+              errors.push(`${pfx}.actors.${who}.chara: file not found ("${norm.name}")`);
+            }
           }
         }
       }
@@ -190,31 +151,21 @@ function checkAssetsSameFolder(script: Script, yamlAbsPath: string): string[] {
     const rel = path.relative(process.cwd(), file) || file;
     try {
       const text = fs.readFileSync(file, "utf8");
-
-      // 構文チェック（行番号を取りやすい）
-      let root: unknown;
-      try {
-        root = yaml.load(text);
-      } catch (e) {
-        throw new Error(formatYamlError(e));
-      }
-
-      // スキーマ検証（baseDir は Node 側から）
       const baseDir = path.dirname(file).split(path.sep).join("/") + "/";
-      const script: Script = validateScriptObject(root, { baseDir });
+
+      // ★ ここで parseScriptYAML を直接使う
+      const script = parseScriptYAML(text, { baseDir });
 
       // 参照ファイル（同一フォルダ・存在）チェック
       const assetErrors = checkAssetsSameFolder(script, file);
       if (assetErrors.length) {
-        throw new Error(
-          "Asset validation failed:\n - " + assetErrors.join("\n - ")
-        );
+        throw new Error("Asset validation failed:\n - " + assetErrors.join("\n - "));
       }
 
       if (!args.quiet) console.log(`✅ OK: ${rel}`);
       okCount++;
     } catch (e) {
-      console.error(`❌ NG: ${rel}\n   ${e instanceof Error ? e.message : String(e)}`);
+      console.error(`❌ NG: ${rel}\n   ${formatYamlLikeError(e)}`);
       ngCount++;
     }
   }
